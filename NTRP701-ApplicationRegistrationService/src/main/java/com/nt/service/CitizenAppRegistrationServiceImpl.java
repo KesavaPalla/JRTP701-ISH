@@ -7,29 +7,37 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import com.nt.bindings.CitizenAppRegistrationInputs;
 import com.nt.entity.CitizenAppRegistrationEntity;
+import com.nt.exceptions.InvalidSSNException;
 import com.nt.repository.IApplicationRegistrationRepository;
 
 @Service
 public class CitizenAppRegistrationServiceImpl implements ICitizenAppRegistrationService {
 	@Autowired
 	private IApplicationRegistrationRepository citizenRepo;
-	@Autowired
+	/*@Autowired
 	private RestTemplate template;
+	*/
+	@Autowired
+	private WebClient client;
 	@Value("${ar.ssa-web.url}")
 	private String endPointURL;
 	@Value("${ar.state}")
 	private String targetState;
 
 	@Override
-	public Integer registerCitizenApp(CitizenAppRegistrationInputs inputs) {
+	public Integer registerCitizenApp(CitizenAppRegistrationInputs inputs)throws InvalidSSNException{
 		
+		/*
 		//perform  web service call  to check weather  SSN is valid or not  and get them state name.
 		ResponseEntity<String>response=template.exchange(endPointURL, HttpMethod.GET,null,String.class,inputs.getSsn());
+		*/
+		//perform  web service call  to check weather  SSN is valid or not  and get them state name. Using WebClient
 		//get State name
-		String stateName=response.getBody();
+		String stateName=client.get().uri(endPointURL,inputs.getSsn()).retrieve().bodyToMono(String.class).block();
 		//register the citizen if he belongs to California state 
 		if(stateName.equalsIgnoreCase(targetState)) {
 			//prepare the entity class
@@ -41,7 +49,7 @@ public class CitizenAppRegistrationServiceImpl implements ICitizenAppRegistratio
 			return appId;
 		}
 		
-		return 0;
+		throw new InvalidSSNException("Invalid SSN");
 	}
 
 }
